@@ -3,8 +3,8 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "easystorage"
-version = "0.1.1"
+name = "swiftstorage"
+version = "0.1.0"
 authors = [
   { name="Sean Yeatts" },
 ]
@@ -19,4 +19,4 @@ classifiers = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/SeanYeatts/quickstorage"
+"Homepage" = "https://github.com/SeanYeatts/swiftstorage"
