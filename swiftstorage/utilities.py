@@ -5,8 +5,8 @@ from __future__ import annotations
 
 # FUNCTIONS
 def pretty_print_bytes(byte_value: bytes, decimals: int = 3) -> tuple[float, str]:
-    """Auto-scales a raw byte value to use human-readable units. Returns a
-    tuple containing the result and its unit suffix."""
+    """Auto-scales a raw byte value to be represented in a human-readable format.
+    Returns a tuple containing the result and its unit suffix."""
     if not isinstance(byte_value, (int, float)):  # Ensure it's a number
         raise TypeError("Input must be a numerical type (int or float).")
     

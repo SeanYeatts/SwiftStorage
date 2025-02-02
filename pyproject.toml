@@ -9,7 +9,7 @@ authors = [
   { name="Sean Yeatts" },
 ]
 license = {text = "MIT License"}
-description = "A simple paradigm for local and remote file manipulation."
+description = "A simple way to interact with local and remote files / folders through an easy-to-use and highly extendable API."
 readme = "README.rst"
 requires-python = ">=3.7"
 classifiers = [
@@ -19,4 +19,4 @@ classifiers = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/SeanYeatts/swiftstorage"
+"Homepage" = "https://github.com/SeanYeatts/SwiftStorage"

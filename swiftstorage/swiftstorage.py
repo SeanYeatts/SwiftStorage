@@ -31,7 +31,7 @@ class Storage:
     def __init__(self, root: str, specification: StorageSpecification = None):
         self.stream = Stream()
         
-        # Specification
+        # Initialize specification
         self._specification = specification or LocalSpecification()
         self._specification.bind(self)
 
@@ -149,17 +149,17 @@ class Stream:
 
     # TELEMETRY METHODS
     def connect(self, progress_hook: Callable[[float]] = None) -> None:
+        """Binds a callback function to the stream."""
         if not progress_hook:
             return
         if progress_hook in self.callbacks:
             return
-        print(f"adding callback: {progress_hook}")
         self.callbacks.append(progress_hook)
 
     def disconnect(self, progress_hook: Callable[[float]]) -> None:
+        """Unbinds a callback function from the stream."""
         if not progress_hook in self.callbacks:
             return
-        print(f"removing callback: {progress_hook}")
         self.callbacks.remove(progress_hook)
 
     # PRIVATE METHODS
@@ -174,9 +174,10 @@ class Stream:
         return chunk
     
     def on_chunk_processed(self, current: int, total: int) -> None:
+        """Runs when a chunk is processed."""
         percent = current / total * 100
-        percent = round(percent, 2)
-        print(f"{current} / {total} - {percent}%")
+        percent = round(percent, 3)
+        # print(f"{current} / {total} - {percent}%")
         for callback in self.callbacks:
             callback(percent)
 
@@ -237,6 +238,9 @@ class StorageSpecification(Abstract):
 class LocalSpecification(StorageSpecification):
     """Represents a datastore that exists on the local machine."""
     
+    # CLASS ATTRIBUTES
+    delimiter: str = "\\"
+
     # INTROSPECTIVE METHODS
     def contains(self, file):
         super().contains(file)
@@ -343,7 +347,7 @@ class LocalSpecification(StorageSpecification):
                     progress += len(chunk)
                     datastream.extend(chunk)
                     self.storage.stream.on_chunk_processed(progress, size)
-                print('download complete')
+                print('download complete!')
                 return datastream
         except Exception as exception:
             print(f"error downloading file: '{file}'")
@@ -378,7 +382,7 @@ class LocalSpecification(StorageSpecification):
                     target.write(chunk)
                     progress += current
                     self.storage.stream.on_chunk_processed(progress, size)
-                print('upload complete')
+                print('upload complete!')
                 return True
         except Exception as exception:
             print(f"error uploading file: '{rename}'")

@@ -4,7 +4,7 @@ SwiftStorage
 
 Copyright (c) 2025 Sean Yeatts. All rights reserved.
 
-A simple paradigm for local and remote file manipulation.
+A simple way to interact with local and remote files / folders through an easy-to-use and highly extendable API.
 """
 
 from __future__ import annotations
