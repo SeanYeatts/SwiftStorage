@@ -1,15 +1,17 @@
-*Copyright (c) 2025 Sean Yeatts, Inc. All rights reserved.*
-
 SwiftStorage
 ============
 
+*Copyright (c) 2025 Sean Yeatts, Inc. All rights reserved.*
+
 A simple way to interact with local and remote file systems. Easily extendable to support custom endpoints.
+
 
 Key Features
 ------------
 - High level methods provide intuitive ways to move, copy, and delete files / folders with minimal code.
 - Low level methods provide injection points for middleman services ( ex. data encryption ).
 - Hook into data streams to monitor progress; useful for GUI apps that incorporate progress bars.
+
 
 Quickstart
 ----------
