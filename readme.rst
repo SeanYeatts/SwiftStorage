@@ -3,7 +3,7 @@
 SwiftStorage
 ============
 
-A simple way to interact with local and remote files / folders through an easy-to-use and highly extendable API.
+A simple way to interact with local and remote file systems. Easily extendable to support custom endpoints.
 
 Key Features
 ------------
