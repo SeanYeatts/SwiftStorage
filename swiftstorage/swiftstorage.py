@@ -165,28 +165,30 @@ class Storage:
 
 
 # DATA STREAMING
+class StreamListener:
+
+    # INTRINSIC METHODS
+    def __init__(self):
+        self.callbacks: List[Callable[[float]]] = []
+    
+    # PUBLIC METHODS
+    def connect(self, callback: Callable[[float]]) -> None:
+        if not callback in self.callbacks:
+            self.callbacks.append(callback)
+
+    def disconnect(self, callback: Callable[[float]]) -> None:
+        if callback in self.callbacks:
+            self.callbacks.remove(callback)
+
+
 class Stream:
     """The transmission channel through which a Storage object's data transfer
     operations are performed."""
 
     # INTRINSIC METHODS
     def __init__(self):
-        self.callbacks: List[Callable[[float]]] = []
-
-    # TELEMETRY METHODS
-    def connect(self, progress_hook: Callable[[float]] = None) -> None:
-        """Binds a callback function to the stream."""
-        if not progress_hook:
-            return
-        if progress_hook in self.callbacks:
-            return
-        self.callbacks.append(progress_hook)
-
-    def disconnect(self, progress_hook: Callable[[float]]) -> None:
-        """Unbinds a callback function from the stream."""
-        if not progress_hook in self.callbacks:
-            return
-        self.callbacks.remove(progress_hook)
+        self.download:  StreamListener = StreamListener()
+        self.upload:    StreamListener = StreamListener()
 
     # PRIVATE METHODS
     def partition(self, file_size: float, increments: int = 5, limit: int = 10) -> bytes:
@@ -196,15 +198,22 @@ class Stream:
         size ( limit )."""
         calculated  = file_size // increments
         allowable   = limit * 1000000   # convert megabytes --> bytes
-        chunk = min(calculated, allowable)
+        chunk       = min(calculated, allowable)
         return chunk
     
-    def on_chunk_processed(self, current: int, total: int) -> None:
-        """Runs when a chunk is processed."""
-        percent = current / total * 100
-        percent = round(percent, 2)
-        for callback in self.callbacks:
-            callback(percent)
+    def on_chunk_download(self, current: int, total: int) -> None:
+        """Runs when a chunk is downloaded."""
+        percent     = current / total * 100
+        progress    = round(percent, 2)
+        for callback in self.download.callbacks:
+            callback(progress)
+
+    def on_chunk_upload(self, current: int, total: int) -> None:
+        """Runs when a chunk is uploaded."""
+        percent     = current / total * 100
+        progress    = round(percent, 2)
+        for callback in self.upload.callbacks:
+            callback(progress)
 
 
 # SPECIFICATIONS
@@ -355,7 +364,7 @@ class LocalSpecification(StorageSpecification):
                         break
                     progress += len(chunk)
                     datastream.extend(chunk)
-                    self.storage.stream.on_chunk_processed(progress, size)
+                    self.storage.stream.on_chunk_download(progress, size)
                 print('download complete!')
                 return datastream
         except Exception as exception:
@@ -386,7 +395,7 @@ class LocalSpecification(StorageSpecification):
                     chunk = stream[progress:progress + current]
                     target.write(chunk)
                     progress += current
-                    self.storage.stream.on_chunk_processed(progress, size)
+                    self.storage.stream.on_chunk_upload(progress, size)
                 print('upload complete!')
                 return True
         except Exception as exception:
