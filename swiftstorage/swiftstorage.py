@@ -5,6 +5,7 @@ from __future__ import annotations
 
 # IMPORTS ( STANDARD )
 import os
+import pathlib
 import shutil
 from abc import ABC as Abstract
 from abc import abstractmethod
@@ -52,17 +53,24 @@ class Storage:
     # INTROSPECTIVE METHODS
     def contains(self, file: str) -> bool:
         """Checks whether a file exists within the datastore."""
-        return self.specification.contains(file)
+        path = self.format_path(file)
+        return self.specification.contains(path)
     
     def files(self, folder: str = None, subfolders: bool = False) -> list[str]:
         """Returns a list of all files contained within a folder."""
-        path = self.format_path(folder or self.root)
+        path = self.format_path(folder) if (folder is not None) else self.root
         return self.specification.files(path, subfolders)
 
-    def size(self) -> tuple[float, str]:
-        """Returns the total size of the datastore. Returns a tuple containing
-        the result and its unit suffix."""
-        return self.specification.size()
+    def size(self, folder: str = None, subfolders: bool = False) -> tuple[float, str]:
+        """Returns the total size of all files contained within a folder. Returns
+        a tuple containing the result and its unit suffix."""
+        path = self.format_path(folder) if (folder is not None) else self.root
+
+        total: float = 0.0
+        files = self.specification.files(path, subfolders)
+        for file in files:
+            total += self.specification.size(file)
+        return pretty_print_bytes(total)
 
     # FILE MANIPULATION
     def move(self, file: str, destination: Storage, rename: str = None,
@@ -74,16 +82,12 @@ class Storage:
     def copy(self, file: str, destination: Storage, rename: str = None,
         overwrite: bool = True) -> bool:
         """Transfers a file to another datastore. The original file is preserved."""
-        path = self.format_path(file)
-        if not self.contains(path):
-            print(f"failed to locate file: {file}")
-            return False
         return self.specification.copy(file, destination, (rename or file), overwrite)
 
     def delete(self, file: str) -> bool:
         """Deletes a file from the datastore. Returns True if the file was removed."""
         path = self.format_path(file)
-        if not self.contains(path):
+        if not self.contains(file):
             print(f"failed to locate file: {file}")
             return False
         self.specification.delete(path)
@@ -97,23 +101,45 @@ class Storage:
 
     def purge(self, folder: str = None) -> None:
         """Deletes all files and subfolders from a folder."""
-        path = self.format_path(folder or self.root)
+        path = self.format_path(folder) if (folder is not None) else self.root
         self.specification.purge(path)
 
     def remove(self, folder: str = None) -> None:
         """Removes a folder from the datastore."""
-        path = self.format_path(folder or self.root)
+        path = self.format_path(folder) if (folder is not None) else self.root
         self.specification.remove(path)
 
     # DATA STREAMING METHODS
-    def download(self, file: str) -> bytes:
+    def download(self, file: str) -> bytearray:
         """Streams a file from the datastore."""
         path = self.format_path(file)
+
+        # [1] Check for invalid file
+        if not self.contains(file):
+            print(f"failed to locate file: {file}")
+            return
+        
+        # [2] Check for invalid data
+        if self.specification.size(path) == 0:
+            print(f"cannot process empty file: {file}")
+            return
+
         return self.specification.download(path)
 
-    def upload(self, stream: bytes, rename: str, overwrite: bool = True) -> bool:
+    def upload(self, stream: bytearray, name: str, overwrite: bool = True) -> bool:
         """Streams a file to the datastore."""
-        path = self.format_path(rename)
+        path = self.format_path(name)
+
+        # [1] Check for invalid data
+        if len(stream) <= 0:
+            print("cannot process empty stream")
+            return
+        
+        # [2] If necessary, create folder dependency
+        parent = str(pathlib.Path(name).parent)
+        if parent != ".":
+            self.make(parent)
+        
         return self.specification.upload(stream, path, overwrite)
 
     # HELPER METHODS
@@ -176,8 +202,7 @@ class Stream:
     def on_chunk_processed(self, current: int, total: int) -> None:
         """Runs when a chunk is processed."""
         percent = current / total * 100
-        percent = round(percent, 3)
-        # print(f"{current} / {total} - {percent}%")
+        percent = round(percent, 2)
         for callback in self.callbacks:
             callback(percent)
 
@@ -208,7 +233,7 @@ class StorageSpecification(Abstract):
     def files(self, folder: str, subfolders: bool = False) -> list[str]: ...
 
     @abstractmethod
-    def size(self) -> tuple[float, str]: ...
+    def size(self, file: str) -> tuple[float, str]: ...
 
     # FILE MANIPULATION
     @abstractmethod
@@ -232,7 +257,7 @@ class StorageSpecification(Abstract):
     def download(self, file: str) -> bytes: ...
 
     @abstractmethod
-    def upload(self, stream: bytes, rename: str, overwrite: bool) -> bool: ...
+    def upload(self, stream: bytes, name: str, overwrite: bool) -> bool: ...
 
 
 class LocalSpecification(StorageSpecification):
@@ -260,13 +285,9 @@ class LocalSpecification(StorageSpecification):
                     results.append(path)
         return results
 
-    def size(self):
-        super().size()
-        total: float = 0.0
-        files = self.storage.files(subfolders=True)
-        for file in files:
-            total += os.path.getsize(file)
-        return pretty_print_bytes(total)
+    def size(self, file):
+        super().size(file)
+        return os.path.getsize(file)
 
     # FILE MANIPULATION
     def copy(self, file, destination, rename, overwrite):
@@ -276,16 +297,14 @@ class LocalSpecification(StorageSpecification):
         if destination.contains(rename) and not overwrite:
             print(f"prevented overwrite: {rename}")
             return False
-        
-        # [2] TBD - progress signal hookup
 
-        # [3] Perform transfer operation
+        # [2] Perform transfer operation
         if (data := self.storage.download(file)):
             return destination.upload(data, rename, overwrite)
         return
 
     def delete(self, file):
-        super().delete(file)    
+        super().delete(file)
         print(f"deleting file: {file}")
         os.remove(file)
 
@@ -317,25 +336,15 @@ class LocalSpecification(StorageSpecification):
         super().download(file)
         print(f"preparing file download: {file}")
 
-        # [1] Is this a valid file within the datastore?
-        if not self.storage.contains(file):
-            print(f"failed to locate file: {file}")
-            print(file)
-            return None
-
-        # [2] Is this file empty?
-        if (size := os.path.getsize(file)) == 0:
-            print(f"cannot process empty file: {file}")
-            return None
-        
-        # [3] Calculate chunk size & print info
+        # [1] Calculate chunk size & print info
+        size                    = self.size(file)
         chunk_size              = self.storage.stream.partition(size)
         formatted_file_size     = pretty_print_bytes(size)
         formatted_chunk_size    = pretty_print_bytes(chunk_size)
         print(f"file size ({formatted_file_size[1]}): {formatted_file_size[0]}")
         print(f"chunk size ({formatted_chunk_size[1]}): {formatted_chunk_size[0]}")
 
-        # [4] Perform download operation
+        # [2] Perform download operation
         try:
             print('downloading...')
             progress = 0
@@ -354,27 +363,23 @@ class LocalSpecification(StorageSpecification):
             print(exception)
             return None
     
-    def upload(self, stream, rename, overwrite):
-        super().upload(stream, rename, overwrite)
-        print(f"preparing file upload: {rename}")
-
-        # [1] Is the stream empty?
-        if (size := len(stream)) <= 0:
-            print(f"cannot process empty stream: '{rename}'")
-            return None
+    def upload(self, stream, name, overwrite):
+        super().upload(stream, name, overwrite)
+        print(f"preparing file upload: {name}")
         
-        # [2] Calculate chunk size & print info
+        # [1] Calculate chunk size & print info
+        size                    = len(stream)
         chunk_size              = self.storage.stream.partition(size)
         formatted_file_size     = pretty_print_bytes(size)
         formatted_chunk_size    = pretty_print_bytes(chunk_size)
         print(f"file size ({formatted_file_size[1]}): {formatted_file_size[0]}")
         print(f"chunk size ({formatted_chunk_size[1]}): {formatted_chunk_size[0]}")
 
-        # [3] Perform upload operation
+        # [2] Perform upload operation
         try:
             print('uploading...')
             progress = 0
-            with open(rename, 'wb') as target:
+            with open(name, 'wb') as target:
                 while progress < size:
                     remaining = size - progress
                     current = min(chunk_size, remaining)
@@ -385,6 +390,6 @@ class LocalSpecification(StorageSpecification):
                 print('upload complete!')
                 return True
         except Exception as exception:
-            print(f"error uploading file: '{rename}'")
+            print(f"error uploading file: '{name}'")
             print(exception)
             return False

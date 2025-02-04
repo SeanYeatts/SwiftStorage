@@ -4,14 +4,14 @@ build-backend = "hatchling.build"
 
 [project]
 name = "swiftstorage"
-version = "0.2.0"
+version = "0.3.0"
 authors = [
   { name="Sean Yeatts" },
 ]
 license = {text = "MIT License"}
-description = "A simple way to interact with local and remote files / folders through an easy-to-use and highly extendable API."
+description = "A simple way to interact with local and remote file systems. Easily extendable to support custom endpoints."
 readme = "README.rst"
-requires-python = ">=3.7"
+requires-python = ">=3.8"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
