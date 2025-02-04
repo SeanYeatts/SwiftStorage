@@ -29,11 +29,11 @@ Key ``import`` statements :
 
 
   # MOCKUP FUNCTIONS
-  def monitor_download(percent: float) -> None:
-      print(f"downloaded: {percent}%")
+  def monitor_download(progress: float) -> None:
+      print(f"downloaded: {progress}%")
   
-  def monitor_upload(percent: float) -> None:
-      print(f"uploaded: {percent}%")
+  def monitor_upload(progress: float) -> None:
+      print(f"uploaded: {progress}%")
 
 
   # MAIN DEFINITION
@@ -44,8 +44,8 @@ Key ``import`` statements :
       destination = Storage(fr"cache\folder-2")
   
       # [2] ( OPTIONAL ) Hook into data streams to monitor transfer progress
-      source.stream.connect(monitor_download)
-      destination.stream.connect(monitor_upload)
+      source.stream.download.connect(monitor_download)
+      destination.stream.upload.connect(monitor_upload)
   
       # [3] Perform a simple copy ( + rename ) operation
       file    = "test-file.jpg"
