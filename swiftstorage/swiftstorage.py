@@ -187,6 +187,7 @@ class Stream:
 
     # INTRINSIC METHODS
     def __init__(self):
+        self.progress:  StreamListener = StreamListener()
         self.download:  StreamListener = StreamListener()
         self.upload:    StreamListener = StreamListener()
 
@@ -196,6 +197,7 @@ class Stream:
         a file's size and a specified number of divisions ( increments ). Returns
         the smaller value between the actual chunk size or the maximum allowable
         size ( limit )."""
+        self.total = file_size * 2
         calculated  = file_size // increments
         allowable   = limit * 1000000   # convert megabytes --> bytes
         chunk       = min(calculated, allowable)
@@ -208,12 +210,33 @@ class Stream:
         for callback in self.download.callbacks:
             callback(progress)
 
+        # Total progress == half download progress
+        for callback in self.progress.callbacks:
+            callback(progress / 2)
+
     def on_chunk_upload(self, current: int, total: int) -> None:
         """Runs when a chunk is uploaded."""
         percent     = current / total * 100
         progress    = round(percent, 2)
         for callback in self.upload.callbacks:
             callback(progress)
+
+    def link(self, stream: Stream) -> None:
+        """Links this stream to another to track symmetrical ( download +
+        upload ) operations."""
+        stream.upload.connect(self._feedback)
+
+    # PRIVATE METHODS
+    def _feedback(self, percent: float) -> None:
+        """Runs when a chunk from a linked Stream is uploaded. Used to report
+        total progress of symmetrical ( download + upload ) operations."""
+
+        # Normalize the range from 50-100 since we're only reporting the back
+        # half of a total symmetrical operation
+
+        normalized = (percent - 0) / (100 - 0) * (100 - 50) + 50
+        for callback in self.progress.callbacks:
+            callback(round(normalized, 2))
 
 
 # SPECIFICATIONS
@@ -307,7 +330,10 @@ class LocalSpecification(StorageSpecification):
             print(f"prevented overwrite: {rename}")
             return False
 
-        # [2] Perform transfer operation
+        # [2] Link to destination telemetry to report upload progress
+        self.storage.stream.link(destination.stream)
+
+        # [3] Perform transfer operation
         if (data := self.storage.download(file)):
             return destination.upload(data, rename, overwrite)
         return
