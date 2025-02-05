@@ -29,30 +29,27 @@ Key ``import`` statements :
 
 
   # MOCKUP FUNCTIONS
-  def monitor_download(progress: float) -> None:
-      print(f"downloaded: {progress}%")
-  
-  def monitor_upload(progress: float) -> None:
-      print(f"uploaded: {progress}%")
+  def update_progress_bar(progress: float) -> None:
+      """Mockup progress bar."""
+      print(f"progress: {progress}%")
 
 
   # MAIN DEFINITION
   def main() -> None:
-      
+
       # [1] Prepare datastores using basic paths
       source      = Storage(fr"cache\folder-1")
       destination = Storage(fr"cache\folder-2")
-  
-      # [2] ( OPTIONAL ) Hook into data streams to monitor transfer progress
-      source.stream.download.connect(monitor_download)
-      destination.stream.upload.connect(monitor_upload)
-  
+
+      # [2] ( OPTIONAL ) Hook into data stream to monitor transfer progress
+      source.stream.progress.connect(update_progress_bar)
+
       # [3] Perform a simple copy ( + rename ) operation
-      file    = "test-file.jpg"
-      renamed = "test-file-copy.jpg"
+      file    = "test-video.mp4"
+      renamed = "test-video-copy.mp4"
       source.copy(file, destination, renamed, overwrite=True)
-  
-  
+
+
   # ENTRY POINT
   if __name__ == "__main__":
       main()
